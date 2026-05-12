@@ -3,7 +3,7 @@ import sys
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, scrolledtext, ttk
+from tkinter import messagebox, scrolledtext, ttk, filedialog
 
 from core.acquisition import acquire_hives, create_shadow_copy, is_admin, relaunch_as_admin
 from core.hive_loader import load_hives
@@ -86,7 +86,7 @@ CATEGORY_ITEMS = {
 }
 
 
-def run_forensics(log, done):
+def run_forensics(log, done, save_dir: str = None):
     output_path = None
     try:
         shadow = create_shadow_copy(log)
@@ -100,7 +100,7 @@ def run_forensics(log, done):
 
         log("\n[+] Starting Registry Parsing...\n")
 
-        outdir = create_output_structure()
+        outdir = create_output_structure(base_dir=save_dir)
         hives = load_hives(hive_paths, log)
         run_all_parsers(hives, outdir, log)
 
@@ -630,11 +630,17 @@ class ForensicUI:
         self.root.after(0, update_ui)
 
     def start_process(self):
+        # Prompt user for a save location before starting the collection/parsing
+        save_dir = filedialog.askdirectory(title="Select folder to save case files", initialdir=".")
+        if not save_dir:
+            messagebox.showinfo("Save cancelled", "No save location selected. Operation cancelled.")
+            return
+
         self._set_action_button_state(self.start_btn, "disabled")
         self._set_action_button_state(self.report_btn, "disabled")
         self.output_label.config(text="Output Folder: Running...")
         self.show_log()
-        thread = threading.Thread(target=run_forensics, args=(self.log, self.done), daemon=True)
+        thread = threading.Thread(target=run_forensics, args=(self.log, self.done, save_dir), daemon=True)
         thread.start()
 
     def load_latest_output(self, silent=False):

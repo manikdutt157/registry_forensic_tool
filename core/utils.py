@@ -2,16 +2,29 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-def create_output_structure():
-    base = Path("output") / f"CASE_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+def create_output_structure(base_dir: str = None):
+    """Create a CASE_<timestamp> folder structure.
+
+    If `base_dir` is provided, the CASE_<timestamp> folder will be created
+    under that directory. Otherwise the default `output` folder is used.
+    Returns the created base path as a string.
+    """
+    if base_dir:
+        base = Path(base_dir) / f"CASE_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    else:
+        base = Path("output") / f"CASE_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
     folders = [
         "Persistence",
         "USB_History",
         "System_Info",
         "User_Activity",
         "Execution_History",
-        "Network_Info"
+        "Network_Info",
     ]
+
     for f in folders:
         os.makedirs(base / f, exist_ok=True)
+
     return str(base)
