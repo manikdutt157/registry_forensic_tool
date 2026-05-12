@@ -1,0 +1,4 @@
+regipy
+tabulate
+reportlab
+python-docx
