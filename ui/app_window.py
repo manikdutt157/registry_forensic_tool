@@ -20,6 +20,7 @@ class ForensicUI(ButtonMixin, EvidenceViewMixin, ReportMixin):
         self.report_format_vars = {
             "pdf": tk.BooleanVar(value=True),
             "docx": tk.BooleanVar(value=True),
+            "html": tk.BooleanVar(value=False),
         }
 
         root.title("Windows Registry Forensic Tool")
@@ -45,7 +46,7 @@ class ForensicUI(ButtonMixin, EvidenceViewMixin, ReportMixin):
         title = ttk.Label(title_block, text="Registry Forensic Tool", style="ShellTitle.TLabel")
         title.pack(anchor=tk.W)
 
-        self.output_label = ttk.Label(title_block, text="Output Folder: Not started", style="ShellMuted.TLabel")
+        self.output_label = ttk.Label(title_block, text="Case Folder: Not started", style="ShellMuted.TLabel")
         self.output_label.pack(anchor=tk.W, pady=(4, 0))
 
         actions = ttk.Frame(header, style="Shell.TFrame")
@@ -53,7 +54,7 @@ class ForensicUI(ButtonMixin, EvidenceViewMixin, ReportMixin):
 
         self.load_latest_btn = self._create_action_button(
             actions,
-            text="Load Latest Output",
+            text="Load Latest Case",
             command=self.load_latest_output,
             variant="secondary",
         )
@@ -93,7 +94,7 @@ class ForensicUI(ButtonMixin, EvidenceViewMixin, ReportMixin):
             foreground="#d1d5db",
             font=("Segoe UI", 12, "bold"),
         ).pack(side=tk.LEFT, padx=(0, 8))
-        for key, label in (("pdf", "PDF"), ("docx", "DOCX")):
+        for key, label in (("pdf", "PDF"), ("docx", "DOCX"), ("html", "HTML")):
             tk.Checkbutton(
                 report_options,
                 text=label,
@@ -159,7 +160,7 @@ class ForensicUI(ButtonMixin, EvidenceViewMixin, ReportMixin):
         def update_ui():
             self._set_action_button_state(self.start_btn, "normal")
             if output_path:
-                self.output_label.config(text=f"Output Folder: {output_path}")
+                self.output_label.config(text=f"Case Folder: {output_path}")
                 self.load_output(output_path)
                 self.show_results()
                 self.create_report()
@@ -180,7 +181,7 @@ class ForensicUI(ButtonMixin, EvidenceViewMixin, ReportMixin):
 
         self._set_action_button_state(self.start_btn, "disabled")
         self._set_action_button_state(self.report_btn, "disabled")
-        self.output_label.config(text="Output Folder: Running...")
+        self.output_label.config(text="Case Folder: Running...")
         self.show_log()
         thread = threading.Thread(target=run_forensics, args=(self.log, self.done), daemon=True)
         thread.start()

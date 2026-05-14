@@ -23,13 +23,23 @@ REPORT_PURPOSE = (
 METHODOLOGY_STEPS = (
     "Acquire registry hives from the examined Windows system.",
     "Parse selected registry locations for system, user activity, execution, persistence, USB, and network artifacts.",
-    "Preserve parsed results as CSV evidence tables in the case output directory.",
+    "Preserve parsed results as CSV evidence tables in the case folder.",
     "Generate this report from the parsed CSV evidence for review and documentation.",
 )
 LIMITATIONS = (
     "Registry timestamps and values can be affected by system activity, anti-forensic activity, corruption, or parser limits.",
     "This report is a structured summary of parsed artifacts and does not replace full disk, memory, or timeline analysis.",
-    "Rows may be truncated in document formats when evidence volume is high; CSV files remain the complete parsed output.",
+    "Rows may be truncated in document formats when evidence volume is high; CSV files remain the complete parsed evidence.",
+)
+REPORT_DETAIL_FIELDS = (
+    "Case Name",
+    "Case Number",
+    "Investigator Name",
+    "Organization",
+    "Evidence ID",
+    "Subject",
+    "Examination Date",
+    "Notes",
 )
 
 
@@ -75,7 +85,30 @@ def collect_report_data(
     return summary_rows, sections
 
 
-def generate_html_report(case_dir, artifacts=REPORT_ARTIFACTS):
+def normalize_report_details(case_dir: Path, details: Optional[Dict[str, str]] = None) -> List[Tuple[str, str]]:
+    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    values = {field: "" for field in REPORT_DETAIL_FIELDS}
+    if details:
+        values.update({str(key): str(value).strip() for key, value in details.items()})
+
+    if not values["Case Name"]:
+        values["Case Name"] = case_dir.name
+    if not values["Examination Date"]:
+        values["Examination Date"] = generated_at.split(" ")[0]
+
+    rows = [(field, values[field] or "Not specified") for field in REPORT_DETAIL_FIELDS]
+    rows.extend(
+        [
+            ("Case Folder", str(case_dir)),
+            ("Report Generated", generated_at),
+            ("Tool", "Windows Registry Forensic Tool"),
+            ("Report Type", "Registry artifact examination summary"),
+        ]
+    )
+    return rows
+
+
+def generate_html_report(case_dir, artifacts=REPORT_ARTIFACTS, report_details: Optional[Dict[str, str]] = None):
     case_dir = Path(case_dir)
     report_dir = case_dir / "Reports"
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -98,13 +131,18 @@ def generate_html_report(case_dir, artifacts=REPORT_ARTIFACTS):
                 )
             )
 
-    report_path.write_text(render_report(case_dir, summary_rows, sections), encoding="utf-8")
+    report_path.write_text(render_report(case_dir, summary_rows, sections, report_details), encoding="utf-8")
     return report_path
 
 
-def render_report(case_dir, summary_rows, sections):
+def render_report(case_dir, summary_rows, sections, report_details: Optional[Dict[str, str]] = None):
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     case_name = html.escape(case_dir.name)
+    detail_rows = normalize_report_details(Path(case_dir), report_details)
+    detail_html = "\n".join(
+        f'<div class="field-label">{html.escape(label)}</div><div>{html.escape(value)}</div>'
+        for label, value in detail_rows
+    )
     summary = "\n".join(
         f"<tr><td>{html.escape(title)}</td><td>{count}</td><td>{html.escape(source)}</td></tr>"
         for title, count, source in summary_rows
@@ -213,12 +251,9 @@ def render_report(case_dir, summary_rows, sections):
   </header>
   <main>
     <section>
-      <h2>Case Overview</h2>
+      <h2>Report Details</h2>
       <div class="field-grid">
-        <div class="field-label">Case Folder</div><div>{case_name}</div>
-        <div class="field-label">Report Generated</div><div>{html.escape(generated_at)}</div>
-        <div class="field-label">Tool</div><div>Windows Registry Forensic Tool</div>
-        <div class="field-label">Report Type</div><div>Registry artifact examination summary</div>
+        {detail_html}
       </div>
     </section>
     <section>
@@ -286,7 +321,7 @@ def render_table_section(title, filename, headers, rows):
 </section>"""
 
 
-def generate_pdf_report(case_dir, artifacts=REPORT_ARTIFACTS):
+def generate_pdf_report(case_dir, artifacts=REPORT_ARTIFACTS, report_details: Optional[Dict[str, str]] = None):
     """
     Generate a PDF report under <case_dir>/Reports using reportlab.
     """
@@ -328,17 +363,15 @@ def generate_pdf_report(case_dir, artifacts=REPORT_ARTIFACTS):
 
     story = []
     story.append(Paragraph(REPORT_TITLE, title_style))
-    story.append(Paragraph(f"Case: {html.escape(case_dir.name)}", meta_style))
+    detail_rows = normalize_report_details(case_dir, report_details)
+    case_title = dict(detail_rows).get("Case Name", case_dir.name)
+
+    story.append(Paragraph(f"Case: {html.escape(case_title)}", meta_style))
     story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", meta_style))
     story.append(Spacer(1, 10))
 
-    story.append(Paragraph("Case Overview", h2_style))
-    overview_data = [
-        ["Case Folder", case_dir.name],
-        ["Report Generated", datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
-        ["Tool", "Windows Registry Forensic Tool"],
-        ["Report Type", "Registry artifact examination summary"],
-    ]
+    story.append(Paragraph("Report Details", h2_style))
+    overview_data = [[label, value] for label, value in detail_rows]
     overview_table = Table(overview_data, hAlign="LEFT", colWidths=[doc.width * 0.28, doc.width * 0.72])
     overview_table.setStyle(
         TableStyle(
@@ -351,7 +384,7 @@ def generate_pdf_report(case_dir, artifacts=REPORT_ARTIFACTS):
         )
     )
     story.append(overview_table)
-    story.append(Spacer(1, 10))
+    story.append(PageBreak())
 
     story.append(Paragraph("Executive Summary", h2_style))
     story.append(Paragraph(html.escape(REPORT_PURPOSE), meta_style))
@@ -462,7 +495,7 @@ def generate_pdf_report(case_dir, artifacts=REPORT_ARTIFACTS):
     return report_path
 
 
-def generate_docx_report(case_dir, artifacts=REPORT_ARTIFACTS):
+def generate_docx_report(case_dir, artifacts=REPORT_ARTIFACTS, report_details: Optional[Dict[str, str]] = None):
     """
     Generate a DOCX report under <case_dir>/Reports using python-docx.
     """
@@ -474,23 +507,20 @@ def generate_docx_report(case_dir, artifacts=REPORT_ARTIFACTS):
     report_path = report_dir / f"registry_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
 
     summary_rows, report_sections = collect_report_data(case_dir, artifacts)
+    detail_rows = normalize_report_details(case_dir, report_details)
+    case_title = dict(detail_rows).get("Case Name", case_dir.name)
 
     doc = Document()
     doc.add_heading(REPORT_TITLE, level=0)
-    doc.add_paragraph(f"Case: {case_dir.name}")
+    doc.add_paragraph(f"Case: {case_title}")
     doc.add_paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-    doc.add_heading("Case Overview", level=1)
-    overview_table = doc.add_table(rows=4, cols=2)
-    overview_rows = [
-        ("Case Folder", case_dir.name),
-        ("Report Generated", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-        ("Tool", "Windows Registry Forensic Tool"),
-        ("Report Type", "Registry artifact examination summary"),
-    ]
-    for index, (label, value) in enumerate(overview_rows):
+    doc.add_heading("Report Details", level=1)
+    overview_table = doc.add_table(rows=len(detail_rows), cols=2)
+    for index, (label, value) in enumerate(detail_rows):
         overview_table.rows[index].cells[0].text = label
         overview_table.rows[index].cells[1].text = value
+    doc.add_page_break()
 
     doc.add_heading("Executive Summary", level=1)
     doc.add_paragraph(REPORT_PURPOSE)
@@ -552,7 +582,11 @@ def generate_docx_report(case_dir, artifacts=REPORT_ARTIFACTS):
     return report_path
 
 
-def generate_reports(case_dir, formats: Iterable[str] = ("pdf", "docx")) -> Dict[str, Path]:
+def generate_reports(
+    case_dir,
+    formats: Iterable[str] = ("pdf", "docx"),
+    report_details: Optional[Dict[str, str]] = None,
+) -> Dict[str, Path]:
     """
     Convenience wrapper: generate multiple report formats.
     """
@@ -560,11 +594,11 @@ def generate_reports(case_dir, formats: Iterable[str] = ("pdf", "docx")) -> Dict
     for fmt in formats:
         f = fmt.strip().lower()
         if f == "html":
-            outputs[f] = Path(generate_html_report(case_dir))
+            outputs[f] = Path(generate_html_report(case_dir, report_details=report_details))
         elif f == "pdf":
-            outputs[f] = Path(generate_pdf_report(case_dir))
+            outputs[f] = Path(generate_pdf_report(case_dir, report_details=report_details))
         elif f in ("doc", "docx"):
-            outputs["docx"] = Path(generate_docx_report(case_dir))
+            outputs["docx"] = Path(generate_docx_report(case_dir, report_details=report_details))
         else:
             raise ValueError(f"Unsupported report format: {fmt}")
     return outputs

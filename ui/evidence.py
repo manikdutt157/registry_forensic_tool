@@ -3,6 +3,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
+from core.utils import DEFAULT_OUTPUT_ROOT
 from ui.constants import (
     BORDER,
     CARD_HOVER,
@@ -259,7 +260,7 @@ class EvidenceViewMixin:
         self.detail_pages[title].pack(fill=tk.BOTH, expand=True)
 
     def load_latest_output(self, silent=False):
-        output_root = Path("output")
+        output_root = DEFAULT_OUTPUT_ROOT
         cases = sorted(
             [path for path in output_root.glob("CASE_*") if path.is_dir()],
             key=lambda path: path.stat().st_mtime,
@@ -267,7 +268,7 @@ class EvidenceViewMixin:
         )
         if not cases:
             if not silent:
-                messagebox.showinfo("No output found", "No CASE_* folders were found under output.")
+                messagebox.showinfo("No case found", f"No CASE_* folders were found under {output_root}.")
             return
         self.load_output(cases[0].resolve())
 
@@ -275,7 +276,7 @@ class EvidenceViewMixin:
         output_path = Path(output_path)
         self.current_output_path = output_path
         self._set_action_button_state(self.report_btn, "normal")
-        self.output_label.config(text=f"Output Folder: {output_path}")
+        self.output_label.config(text=f"Case Folder: {output_path}")
 
         for title, folder, filename, _description, _badge, _color in RESULT_TABS:
             csv_path = output_path / folder / filename

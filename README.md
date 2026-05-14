@@ -24,7 +24,7 @@ The GUI will request elevation if it is not already running as Administrator.
 
 ## Output
 
-The tool creates a Volume Shadow Copy, stages available registry hives temporarily, and writes parsed evidence into timestamped folders under `output`.
+The tool creates a Volume Shadow Copy, stages available registry hives temporarily, and writes parsed evidence into timestamped case folders under `C:\Forensic_Report`.
 
 Generated parser outputs are CSV files for:
 
@@ -35,7 +35,9 @@ Generated parser outputs are CSV files for:
 - Execution history
 - Network profiles
 
-The GUI can also load the latest case folder and create reports from the parsed CSV evidence. Reports are saved under the selected case folder in `Reports`.
+The GUI can also load the latest case folder and create reports from the parsed CSV evidence. Reports are saved under the selected case folder in `Reports`, for example `C:\Forensic_Report\CASE_YYYYMMDD_HHMMSS\Reports`.
+
+Before creating a report, the GUI asks for report details such as case name, case number, investigator name, organization, evidence ID, subject, examination date, and notes. These details are added as a dedicated report details page.
 
 The report exporter supports:
 
