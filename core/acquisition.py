@@ -4,11 +4,11 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Callable, Dict, Optional
 
 
-HIVE_DEST = Path("acquired_hives")
 SYSTEM_HIVES = ("SYSTEM", "SOFTWARE", "SAM", "SECURITY")
 
 
@@ -91,15 +91,22 @@ def copy_file(src: Path, dst: Path, log: Callable[[str], None] = default_log) ->
         return False
 
 
-def acquire_hives(shadow_path: str, log: Callable[[str], None] = default_log) -> Dict[str, str]:
-    HIVE_DEST.mkdir(parents=True, exist_ok=True)
+def acquire_hives(
+    shadow_path: str,
+    log: Callable[[str], None] = default_log,
+    destination: Optional[Path] = None,
+) -> Dict[str, str]:
+    if destination is None:
+        destination = Path(tempfile.mkdtemp(prefix="registry_hives_"))
+
+    destination.mkdir(parents=True, exist_ok=True)
     acquired: Dict[str, str] = {}
 
     config_path = Path(shadow_path) / "Windows" / "System32" / "config"
     users_path = Path(shadow_path) / "Users"
 
     for hive in SYSTEM_HIVES:
-        dst = HIVE_DEST / hive
+        dst = destination / hive
         if copy_file(config_path / hive, dst, log):
             acquired[hive] = str(dst)
 
@@ -107,14 +114,14 @@ def acquire_hives(shadow_path: str, log: Callable[[str], None] = default_log) ->
     user_names = [p.name for p in local_users.iterdir() if p.is_dir()] if local_users.exists() else []
     for user in user_names:
         ntuser_src = users_path / user / "NTUSER.DAT"
-        ntuser_dst = HIVE_DEST / f"NTUSER_{user}.DAT"
+        ntuser_dst = destination / f"NTUSER_{user}.DAT"
         if copy_file(ntuser_src, ntuser_dst, log):
             acquired[f"NTUSER_{user}"] = str(ntuser_dst)
 
     return acquired
 
 
-def discover_acquired_hives(base: Path = HIVE_DEST) -> Dict[str, str]:
+def discover_acquired_hives(base: Path) -> Dict[str, str]:
     paths: Dict[str, str] = {}
     for hive in SYSTEM_HIVES:
         path = base / hive

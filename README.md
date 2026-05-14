@@ -8,10 +8,10 @@ A small Windows registry acquisition and parsing utility built around `regipy`.
 - Administrator privileges
 - Python dependencies from `requirements.txt`
 
-## Run the GUI
+## Run the App
 
 ```powershell
-.\venv\Scripts\python.exe ui.py
+.\venv\Scripts\python.exe app.py
 ```
 
 The GUI will request elevation if it is not already running as Administrator.
@@ -24,7 +24,7 @@ The GUI will request elevation if it is not already running as Administrator.
 
 ## Output
 
-The tool creates a Volume Shadow Copy, copies available registry hives into `acquired_hives`, and writes parsed evidence into timestamped folders under `output`.
+The tool creates a Volume Shadow Copy, stages available registry hives temporarily, and writes parsed evidence into timestamped folders under `output`.
 
 Generated parser outputs are CSV files for:
 
@@ -35,10 +35,9 @@ Generated parser outputs are CSV files for:
 - Execution history
 - Network profiles
 
-The GUI can also load the latest case folder and create an HTML report from the parsed CSV evidence. Reports are saved under the selected case folder in `Reports`.
+The GUI can also load the latest case folder and create reports from the parsed CSV evidence. Reports are saved under the selected case folder in `Reports`.
 
 The report exporter supports:
 
-- HTML (`.html`)
 - PDF (`.pdf`)
 - Word DOCX (`.docx`)
